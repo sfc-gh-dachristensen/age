@@ -1366,7 +1366,7 @@ static void add_valid_vertex_edges(VLE_local_context *vlelctx,
 static VLE_path_container *create_VLE_path_container(int64 path_size)
 {
     VLE_path_container *vpc = NULL;
-    int container_size_bytes = 0;
+    Size container_size_bytes = 0;
 
     /*
      * For the total container size (in graphids int64s) we need to add the
@@ -1378,7 +1378,16 @@ static VLE_path_container *create_VLE_path_container(int64 path_size)
      *     One for the container_size_bytes.
      *
      */
-    container_size_bytes = sizeof(graphid) * (path_size + 4);
+
+    /* Guard against negative or excessively large path sizes that would
+     * overflow the Size arithmetic below or exceed palloc's limit. */
+    if (path_size < 0 ||
+        path_size > (int64)((MaxAllocSize / sizeof(graphid)) - 4))
+        ereport(ERROR,
+                (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+                 errmsg("VLE path size %ld exceeds maximum allowed", path_size)));
+
+    container_size_bytes = sizeof(graphid) * (Size)(path_size + 4);
 
     /* allocate the container */
     vpc = palloc0(container_size_bytes);
@@ -1430,7 +1439,7 @@ static VLE_path_container *build_VLE_path_container(VLE_local_context *vlelctx)
     GraphIdNode *edge = NULL;
     graphid vid = 0;
     int index = 0;
-    int ssize = 0;
+    int64 ssize = 0;
 
     if (stack == NULL)
     {
