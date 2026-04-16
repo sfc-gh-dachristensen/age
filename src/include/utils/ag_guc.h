@@ -44,6 +44,14 @@ extern bool age_enable_containment;
  */
 extern int age_max_vle_depth;
 
+/*
+ * Maximum number of vertices plus edges that may be loaded into a single
+ * global graph context.  0 means no limit (the default).  Set this to a
+ * positive value to prevent a backend from exhausting memory on very large
+ * graphs.  Example: SET age.graph_load_size_limit = 10000000;
+ */
+extern int age_graph_load_size_limit;
+
 void define_config_params(void);
 
 #endif

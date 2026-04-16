@@ -30,6 +30,7 @@
 #include "utils/builtins.h"
 
 #include "utils/age_global_graph.h"
+#include "utils/ag_guc.h"
 #include "catalog/ag_graph.h"
 #include "catalog/ag_label.h"
 
@@ -621,6 +622,21 @@ static void load_vertex_hashtable(GRAPH_global_context *ggctx)
                          (errcode(ERRCODE_DATA_EXCEPTION),
                           errmsg("ignored duplicate vertex")));
             }
+
+            /* enforce the load size limit if one is configured */
+            if (age_graph_load_size_limit > 0 &&
+                (ggctx->num_loaded_vertices + ggctx->num_loaded_edges) >
+                    age_graph_load_size_limit)
+            {
+                table_endscan(scan_desc);
+                table_close(graph_vertex_label, AccessShareLock);
+                ereport(ERROR,
+                        (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+                         errmsg("global graph context for \"%s\" exceeded "
+                                "age.graph_load_size_limit (%d)",
+                                ggctx->graph_name,
+                                age_graph_load_size_limit)));
+            }
         }
 
         /* end the scan and close the relation */
@@ -743,6 +759,21 @@ static void load_edge_hashtable(GRAPH_global_context *ggctx)
                  ereport(WARNING,
                          (errcode(ERRCODE_DATA_EXCEPTION),
                           errmsg("ignored duplicate edge")));
+            }
+
+            /* enforce the load size limit if one is configured */
+            if (age_graph_load_size_limit > 0 &&
+                (ggctx->num_loaded_vertices + ggctx->num_loaded_edges) >
+                    age_graph_load_size_limit)
+            {
+                table_endscan(scan_desc);
+                table_close(graph_edge_label, AccessShareLock);
+                ereport(ERROR,
+                        (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+                         errmsg("global graph context for \"%s\" exceeded "
+                                "age.graph_load_size_limit (%d)",
+                                ggctx->graph_name,
+                                age_graph_load_size_limit)));
             }
 
             /* insert the edge into the start and end vertices edge lists */
