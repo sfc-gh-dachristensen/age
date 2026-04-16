@@ -1258,6 +1258,9 @@ static void add_valid_vertex_edges(VLE_local_context *vlelctx,
     while (edge_out != NULL || edge_in != NULL || edge_self != NULL)
     {
         edge_entry *ee = NULL;
+
+        /* allow query cancellation on high-degree vertices */
+        CHECK_FOR_INTERRUPTS();
         edge_state_entry *ese = NULL;
         graphid edge_id;
 
