@@ -24,8 +24,8 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// var dsn string = "host={host} port={port} dbname={dbname} user={username} password={password} sslmode=disable"
-var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=disable"
+// var dsn string = "host={host} port={port} dbname={dbname} user={username} password={password} sslmode=require"
+var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require"
 
 // var graphName string = "{graph_path}"
 var graphName string = "testGraph"
