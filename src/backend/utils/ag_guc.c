@@ -26,6 +26,7 @@
 
 bool age_enable_containment = true;
 int  age_max_vle_depth = 1000;
+int  age_graph_load_size_limit = 0;
 
 /*
  * Defines AGE's custom configuration parameters.
@@ -52,6 +53,19 @@ void define_config_params(void)
                             &age_max_vle_depth,
                             1000,
                             1,
+                            INT_MAX,
+                            PGC_SUSET,
+                            0,
+                            NULL,
+                            NULL,
+                            NULL);
+
+    DefineCustomIntVariable("age.graph_load_size_limit",
+                            "Maximum number of vertices plus edges loaded into a global graph context (0 = no limit).",
+                            NULL,
+                            &age_graph_load_size_limit,
+                            0,
+                            0,
                             INT_MAX,
                             PGC_SUSET,
                             0,
