@@ -20,6 +20,7 @@
 #ifndef AG_LOAD_EDGES_H
 #define AG_LOAD_EDGES_H
 
+#include "commands/copy.h"
 #include "utils/load/age_load.h"
 
 /*
@@ -28,7 +29,7 @@
  * CSV format: start_id, start_vertex_type, end_id, end_vertex_type, [properties...]
  *
  * Parameters:
- *   file_path       - Path to the CSV file (must be in /tmp/age/)
+ *   data_cb         - COPY data source callback reading from a validated fd
  *   graph_name      - Name of the graph
  *   graph_oid       - OID of the graph
  *   label_name      - Name of the edge label
@@ -37,8 +38,8 @@
  *
  * Returns EXIT_SUCCESS on success.
  */
-int create_edges_from_csv_file(char *file_path, char *graph_name, Oid graph_oid,
-                               char *label_name, int label_id,
+int create_edges_from_csv_file(copy_data_source_cb data_cb, char *graph_name,
+                               Oid graph_oid, char *label_name, int label_id,
                                bool load_as_agtype);
 
 #endif /* AG_LOAD_EDGES_H */
