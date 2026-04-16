@@ -239,7 +239,7 @@ static agtype_value *csv_value_to_agtype_value(char *csv_val)
         new_csv_val = (char *)palloc(sizeof(char) * (newlen + 1));
 
         new_csv_val[0] = '"';
-        strncpy(&new_csv_val[1], csv_val, oldlen);
+        memcpy(&new_csv_val[1], csv_val, oldlen);
         new_csv_val[oldlen + 1] = '"';
         new_csv_val[oldlen + 2] = '\0';
     }
