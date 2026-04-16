@@ -19,12 +19,17 @@
 
 #include "postgres.h"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "access/heapam.h"
 #include "access/table.h"
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_authid.h"
+#include "commands/copy.h"
 #include "executor/executor.h"
 #include "miscadmin.h"
 #include "nodes/parsenodes.h"
@@ -42,10 +47,17 @@ static agtype_value *csv_value_to_agtype_value(char *csv_val);
 static Oid get_or_create_graph(const Name graph_name);
 static int32 get_or_create_label(Oid graph_oid, char *graph_name,
                                  char *label_name, char label_kind);
-static char *build_safe_filename(char *name);
+static int open_validated_file(char *name);
+static int age_csv_read_callback(void *outbuf, int minread, int maxread);
 static void check_file_read_permission(void);
 static void check_table_permissions(Oid relid);
 static void check_rls_for_load(Oid relid);
+
+/* Process-local fd held open between open_validated_file() and the
+ * age_csv_read_callback().  PG backends are single-threaded so a single
+ * static is safe.
+ */
+static int validated_csv_fd = -1;
 
 #define AGE_BASE_CSV_DIRECTORY "/tmp/age/"
 #define AGE_CSV_FILE_EXTENSION ".csv"
@@ -93,17 +105,23 @@ char *trim_whitespace(const char *str)
     return pnstrdup(start, len);
 }
 
-static char *build_safe_filename(char *name)
+/*
+ * Validate name, resolve the path, then open it with O_NOFOLLOW to prevent
+ * a symlink from being swapped in between realpath() and the actual open.
+ * Returns an open file descriptor (caller must close it).
+ */
+static int open_validated_file(char *name)
 {
     int length;
     char path[PATH_MAX];
     char *resolved;
+    int fd;
+    struct stat st;
 
     if (name == NULL)
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("file name cannot be NULL")));
-
     }
 
     length = strlen(name);
@@ -112,7 +130,6 @@ static char *build_safe_filename(char *name)
     {
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("file name cannot be zero length")));
-
     }
 
     snprintf(path, sizeof(path), "%s%s", AGE_BASE_CSV_DIRECTORY, name);
@@ -128,21 +145,70 @@ static char *build_safe_filename(char *name)
     if (strncmp(resolved, AGE_BASE_CSV_DIRECTORY,
                 strlen(AGE_BASE_CSV_DIRECTORY)) != 0)
     {
+        free(resolved);
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("You can only load files located in [%s].",
                                AGE_BASE_CSV_DIRECTORY)));
     }
 
     length = strlen(resolved) - 4;
-    if (strncmp(resolved+length, AGE_CSV_FILE_EXTENSION,
+    if (strncmp(resolved + length, AGE_CSV_FILE_EXTENSION,
                 strlen(AGE_CSV_FILE_EXTENSION)) != 0)
     {
+        free(resolved);
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("You can only load files with extension [%s].",
                                AGE_CSV_FILE_EXTENSION)));
     }
 
-    return resolved;
+    /*
+     * Open with O_NOFOLLOW so that a symlink placed at the resolved path
+     * after realpath() returns cannot redirect us to an arbitrary file.
+     */
+    fd = open(resolved, O_RDONLY | O_NOFOLLOW);
+    free(resolved);
+
+    if (fd < 0)
+    {
+        ereport(ERROR, (errcode_for_file_access(),
+                        errmsg("could not open CSV file: %m")));
+    }
+
+    /* Verify the descriptor refers to a regular file, not a device or FIFO */
+    if (fstat(fd, &st) != 0)
+    {
+        close(fd);
+        ereport(ERROR, (errcode_for_file_access(),
+                        errmsg("could not stat CSV file: %m")));
+    }
+
+    if (!S_ISREG(st.st_mode))
+    {
+        close(fd);
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("CSV path does not refer to a regular file")));
+    }
+
+    return fd;
+}
+
+/*
+ * Callback passed to BeginCopyFrom as data_source_cb.
+ * Reads from the already-open validated_csv_fd.
+ */
+static int age_csv_read_callback(void *outbuf, int minread, int maxread)
+{
+    int bytesread;
+
+    bytesread = read(validated_csv_fd, outbuf, maxread);
+
+    if (bytesread < 0)
+    {
+        ereport(ERROR, (errcode_for_file_access(),
+                        errmsg("could not read CSV file: %m")));
+    }
+
+    return bytesread;
 }
 
 /*
@@ -570,7 +636,6 @@ Datum load_labels_from_file(PG_FUNCTION_ARGS)
     text* file_name;
     char* graph_name_str;
     char* label_name_str;
-    char* file_path_str;
     Oid graph_oid;
     Oid label_relid;
     int32 label_id;
@@ -612,7 +677,7 @@ Datum load_labels_from_file(PG_FUNCTION_ARGS)
         label_name_str = AG_DEFAULT_LABEL_VERTEX;
     }
 
-    file_path_str = build_safe_filename(text_to_cstring(file_name));
+    validated_csv_fd = open_validated_file(text_to_cstring(file_name));
 
     graph_oid = get_or_create_graph(graph_name);
     label_id = get_or_create_label(graph_oid, graph_name_str,
@@ -623,11 +688,22 @@ Datum load_labels_from_file(PG_FUNCTION_ARGS)
     check_table_permissions(label_relid);
     check_rls_for_load(label_relid);
 
-    create_labels_from_csv_file(file_path_str, graph_name_str, graph_oid,
-                                label_name_str, label_id, id_field_exists,
-                                load_as_agtype);
+    PG_TRY();
+    {
+        create_labels_from_csv_file(age_csv_read_callback, graph_name_str,
+                                    graph_oid, label_name_str, label_id,
+                                    id_field_exists, load_as_agtype);
+    }
+    PG_CATCH();
+    {
+        close(validated_csv_fd);
+        validated_csv_fd = -1;
+        PG_RE_THROW();
+    }
+    PG_END_TRY();
 
-    free(file_path_str);
+    close(validated_csv_fd);
+    validated_csv_fd = -1;
 
     PG_RETURN_VOID();
 }
@@ -640,7 +716,6 @@ Datum load_edges_from_file(PG_FUNCTION_ARGS)
     text* file_name;
     char* graph_name_str;
     char* label_name_str;
-    char* file_path_str;
     Oid graph_oid;
     Oid label_relid;
     int32 label_id;
@@ -680,7 +755,7 @@ Datum load_edges_from_file(PG_FUNCTION_ARGS)
         label_name_str = AG_DEFAULT_LABEL_EDGE;
     }
 
-    file_path_str = build_safe_filename(text_to_cstring(file_name));
+    validated_csv_fd = open_validated_file(text_to_cstring(file_name));
 
     graph_oid = get_or_create_graph(graph_name);
     label_id = get_or_create_label(graph_oid, graph_name_str,
@@ -691,10 +766,22 @@ Datum load_edges_from_file(PG_FUNCTION_ARGS)
     check_table_permissions(label_relid);
     check_rls_for_load(label_relid);
 
-    create_edges_from_csv_file(file_path_str, graph_name_str, graph_oid,
-                               label_name_str, label_id, load_as_agtype);
+    PG_TRY();
+    {
+        create_edges_from_csv_file(age_csv_read_callback, graph_name_str,
+                                   graph_oid, label_name_str, label_id,
+                                   load_as_agtype);
+    }
+    PG_CATCH();
+    {
+        close(validated_csv_fd);
+        validated_csv_fd = -1;
+        PG_RE_THROW();
+    }
+    PG_END_TRY();
 
-    free(file_path_str);
+    close(validated_csv_fd);
+    validated_csv_fd = -1;
 
     PG_RETURN_VOID();
 }
