@@ -23,7 +23,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"reflect"
+	"strings"
 )
 
 // GetReady prepare AGE extension
@@ -157,10 +160,42 @@ type AgeTx struct {
 	tx  *sql.Tx
 }
 
+// warnInsecureSSL logs a warning when sslmode=disable is used with a
+// non-loopback host, because doing so sends credentials in plaintext.
+func warnInsecureSSL(dsn string) {
+	lower := strings.ToLower(dsn)
+	if !strings.Contains(lower, "sslmode=disable") {
+		return
+	}
+
+	// Extract the host value from key=value pairs in the DSN.
+	host := "localhost"
+	for _, field := range strings.Fields(dsn) {
+		if strings.HasPrefix(strings.ToLower(field), "host=") {
+			host = field[5:]
+			break
+		}
+	}
+
+	// Warn only when the host is not a loopback address.
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() {
+			return
+		}
+	} else if host == "localhost" {
+		return
+	}
+
+	log.Printf("WARNING: sslmode=disable is set for non-local host %q — "+
+		"credentials will be transmitted in plaintext. "+
+		"Use sslmode=require or sslmode=verify-full in production.", host)
+}
+
 /**
-@param dsn host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=disable
+@param dsn host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require
 */
 func ConnectAge(graphName string, dsn string) (*Age, error) {
+	warnInsecureSSL(dsn)
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, err

@@ -28,7 +28,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=disable"
+var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require"
 var graphName string = "testGraph"
 
 func TestAdditional(t *testing.T) {
