@@ -465,11 +465,9 @@ CREATE ROLE security_test_noexec LOGIN;
 GRANT USAGE ON SCHEMA security_test TO security_test_noexec;
 GRANT USAGE ON SCHEMA ag_catalog TO security_test_noexec;
 
--- Revoke execute from PUBLIC on functions we want to test
-REVOKE EXECUTE ON FUNCTION ag_catalog.create_graph(name) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION ag_catalog.drop_graph(name, boolean) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION ag_catalog.create_vlabel(cstring, cstring) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION ag_catalog.create_elabel(cstring, cstring) FROM PUBLIC;
+-- EXECUTE on administrative functions is revoked from PUBLIC at install time
+-- (age_main.sql).  No additional setup is needed here; the tests below
+-- verify that a role without an explicit EXECUTE grant cannot call them.
 
 SET ROLE security_test_noexec;
 
@@ -500,11 +498,9 @@ SELECT create_graph('unauthorized_graph');
 
 RESET ROLE;
 
--- Restore execute permissions to PUBLIC
-GRANT EXECUTE ON FUNCTION ag_catalog.create_graph(name) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION ag_catalog.drop_graph(name, boolean) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION ag_catalog.create_vlabel(cstring, cstring) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION ag_catalog.create_elabel(cstring, cstring) TO PUBLIC;
+-- Revoke the role-specific grant given earlier in this test block.
+-- PUBLIC access remains revoked (the install-time default).
+REVOKE EXECUTE ON FUNCTION ag_catalog.create_vlabel(cstring, cstring) FROM security_test_noexec;
 
 -- ============================================================================
 -- PART 12: startNode/endNode Permission Tests
