@@ -144,6 +144,21 @@ CREATE FUNCTION ag_catalog.load_edges_from_file(graph_name name,
     AS 'MODULE_PATHNAME';
 
 --
+-- Restrict administrative functions to superusers and roles that have been
+-- explicitly granted EXECUTE.  PostgreSQL grants EXECUTE to PUBLIC by default;
+-- revoke that for functions that modify graph structure or load data from the
+-- server filesystem.
+--
+REVOKE EXECUTE ON FUNCTION ag_catalog.create_graph(name) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.drop_graph(name, boolean) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.create_vlabel(cstring, cstring) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.create_elabel(cstring, cstring) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.alter_graph(name, cstring, name) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.drop_label(name, name, boolean) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.load_labels_from_file(name, name, text, bool, bool) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION ag_catalog.load_edges_from_file(name, name, text, bool) FROM PUBLIC;
+
+--
 -- graphid type
 --
 
