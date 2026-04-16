@@ -857,6 +857,17 @@ static edge_state_entry *get_edge_state(VLE_local_context *vlelctx,
     /* if it isn't found, it needs to be created and initialized */
     if (!found)
     {
+        /* enforce the edge state limit if one is configured */
+        if (age_vle_edge_state_limit > 0 &&
+            hash_get_num_entries(vlelctx->edge_state_hashtable) >
+                age_vle_edge_state_limit)
+        {
+            ereport(ERROR,
+                    (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+                     errmsg("VLE edge state table exceeded "
+                            "age.vle_edge_state_limit (%d)",
+                            age_vle_edge_state_limit)));
+        }
         /* the edge id is also the hash key for resolving collisions */
         ese->edge_id = edge_id;
         ese->used_in_path = false;

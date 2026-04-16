@@ -52,6 +52,14 @@ extern int age_max_vle_depth;
  */
 extern int age_graph_load_size_limit;
 
+/*
+ * Maximum number of entries allowed in the VLE edge state hash table per
+ * traversal context.  0 means no limit (the default).  Set this to a
+ * positive value to cap memory consumed by large VLE traversals.
+ * Example: SET age.vle_edge_state_limit = 1000000;
+ */
+extern int age_vle_edge_state_limit;
+
 void define_config_params(void);
 
 #endif
