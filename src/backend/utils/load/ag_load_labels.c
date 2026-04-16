@@ -135,7 +135,6 @@ int create_labels_from_csv_file(char *file_path,
 {
     Relation        label_rel;
     Oid             label_relid;
-    CopyFromState   cstate;
     List           *copy_options;
     ParseState     *pstate;
     char          **fields;
@@ -147,6 +146,7 @@ int create_labels_from_csv_file(char *file_path,
     Oid             label_seq_relid;
     int64           curr_seq_num = 0;
     batch_insert_state *batch_state = NULL;
+    CopyFromState   cstate = NULL;
     MemoryContext   batch_context;
     MemoryContext   old_context;
 
@@ -245,13 +245,25 @@ int create_labels_from_csv_file(char *file_path,
 
         /* Finish any remaining batch inserts */
         finish_batch_insert(&batch_state);
+        batch_state = NULL;             /* prevent double-call in PG_FINALLY */
         MemoryContextReset(batch_context);
 
         /* Clean up COPY state */
         EndCopyFrom(cstate);
+        cstate = NULL;                  /* prevent double-call in PG_FINALLY */
     }
     PG_FINALLY();
     {
+        /*
+         * On the error path, cstate and batch_state may not have been cleaned
+         * up by the success path above.  Null checks prevent double-calls.
+         */
+        if (cstate != NULL)
+            EndCopyFrom(cstate);
+
+        if (batch_state != NULL)
+            finish_batch_insert(&batch_state);
+
         /* Free header if allocated */
         if (header != NULL)
         {
