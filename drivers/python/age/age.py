@@ -13,6 +13,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
 import re
 import psycopg
 from psycopg.types import TypeInfo
@@ -24,6 +25,18 @@ from .builder import parseAgeValue
 
 _EXCEPTION_NoConnection = NoConnection()
 _EXCEPTION_GraphNotSet = GraphNotSet()
+
+# Set AGE_DEBUG=1 in the environment to include SQL statements in exception
+# messages.  Off by default to prevent query text (which may contain
+# sensitive parameters) from appearing in application logs.
+_DEBUG = os.environ.get("AGE_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+def _sql_exec_error(cause, stmt):
+    """Build a SqlExecutionError, omitting the SQL text unless AGE_DEBUG is set."""
+    if _DEBUG:
+        return SqlExecutionError("Execution ERR[" + str(cause) + "](" + stmt + ")", cause)
+    return SqlExecutionError("Execution ERR[" + str(cause) + "]", cause)
 
 WHITESPACE = re.compile(r'\s')
 
@@ -257,7 +270,7 @@ def execSql(conn:psycopg.connection, stmt:str, commit:bool=False, params:tuple=N
         raise cause
     except Exception as cause:
         conn.rollback()
-        raise SqlExecutionError("Execution ERR[" + str(cause) +"](" + stmt +")", cause)
+        raise _sql_exec_error(cause, stmt)
 
 
 def querySql(conn:psycopg.connection, stmt:str, params:tuple=None) -> psycopg.cursor :
@@ -288,7 +301,7 @@ def execCypher(conn:psycopg.connection, graphName:str, cypherStmt:str, cols:list
         raise cause
     except Exception as cause:
         conn.rollback()
-        raise SqlExecutionError("Execution ERR[" + str(cause) +"](" + preparedStmt +")", cause)
+        raise _sql_exec_error(cause, preparedStmt)
 
     stmt = buildCypher(graphName, cypher, cols)
 
@@ -301,7 +314,7 @@ def execCypher(conn:psycopg.connection, graphName:str, cypherStmt:str, cols:list
         raise cause
     except Exception as cause:
         conn.rollback()
-        raise SqlExecutionError("Execution ERR[" + str(cause) +"](" + stmt +")", cause)
+        raise _sql_exec_error(cause, stmt)
 
 
 def cypher(cursor:psycopg.cursor, graphName:str, cypherStmt:str, cols:list=None, params:tuple=None) -> psycopg.cursor :
