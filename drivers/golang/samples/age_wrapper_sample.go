@@ -38,17 +38,20 @@ func doWithAgeWrapper(dsn string, graphName string) {
 		panic(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s'})", "Joe")
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name})",
+		map[string]interface{}{"name": "Joe"})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s', age: %d})", "Smith", 10)
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name, age: $age})",
+		map[string]interface{}{"name": "Smith", "age": 10})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s', weight:%f})", "Jack", 70.3)
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Jack", "weight": 70.3})
 	if err != nil {
 		panic(err)
 	}
@@ -60,7 +63,7 @@ func doWithAgeWrapper(dsn string, graphName string) {
 		panic(err)
 	}
 
-	cursor, err := tx.ExecCypher(1, "MATCH (n:Person) RETURN n")
+	cursor, err := tx.ExecCypher(1, "MATCH (n:Person) RETURN n", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -78,14 +81,16 @@ func doWithAgeWrapper(dsn string, graphName string) {
 
 	fmt.Println("Vertex Count:", count)
 
-	_, err = tx.ExecCypher(0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Jack", "Joe", 3)
+	_, err = tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = tx.ExecCypher(0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Joe", "Smith", 7)
+	_, err = tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Smith", "weight": 7})
 	if err != nil {
 		panic(err)
 	}
@@ -97,7 +102,7 @@ func doWithAgeWrapper(dsn string, graphName string) {
 		panic(err)
 	}
 
-	cursor, err = tx.ExecCypher(1, "MATCH p=()-[:workWith]-() RETURN p")
+	cursor, err = tx.ExecCypher(1, "MATCH p=()-[:workWith]-() RETURN p", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -120,7 +125,7 @@ func doWithAgeWrapper(dsn string, graphName string) {
 	}
 
 	// Query with return many columns
-	cursor, err = tx.ExecCypher(3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b")
+	cursor, err = tx.ExecCypher(3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +146,7 @@ func doWithAgeWrapper(dsn string, graphName string) {
 		fmt.Println("ROW ", count, ">>", "\n\t", v1, "\n\t", edge, "\n\t", v2)
 	}
 
-	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		panic(err)
 	}

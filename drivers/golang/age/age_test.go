@@ -47,17 +47,23 @@ func TestAdditional(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "CREATE (n:Person {name: '%s', weight:%f})", "Joe", 67.3)
+	_, err = ExecCypher(cursor, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Joe", "weight": 67.3})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "CREATE (n:Person {name: '%s', weight:77.3, roles:['Dev','marketing']})", "Jack")
+	_, err = ExecCypher(cursor, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: 77.3, roles: ['Dev','marketing']})",
+		map[string]interface{}{"name": "Jack"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "CREATE (n:Person {name: '%s', weight:%d})", "Andy", 59)
+	_, err = ExecCypher(cursor, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Andy", "weight": 59})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +74,7 @@ func TestAdditional(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cypherCursor, err := ExecCypher(cursor, graphName, 1, "MATCH (n:Person) RETURN n")
+	cypherCursor, err := ExecCypher(cursor, graphName, 1, "MATCH (n:Person) RETURN n", nil)
 
 	if err != nil {
 		t.Fatal(err)
@@ -83,15 +89,16 @@ func TestAdditional(t *testing.T) {
 		fmt.Println(vertex.Id(), vertex.Label(), vertex.Props())
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Jack", "Joe", 3)
-
+	_, err = ExecCypher(cursor, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Joe", "Andy", 7)
+	_, err = ExecCypher(cursor, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Andy", "weight": 7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +110,7 @@ func TestAdditional(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cypherCursor, err = ExecCypher(cursor, graphName, 1, "MATCH p=()-[:workWith]-() RETURN p")
+	cypherCursor, err = ExecCypher(cursor, graphName, 1, "MATCH p=()-[:workWith]-() RETURN p", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +130,7 @@ func TestAdditional(t *testing.T) {
 		fmt.Println(vertexStart, edge, vertexEnd)
 	}
 
-	_, err = ExecCypher(cursor, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = ExecCypher(cursor, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,17 +149,20 @@ func TestAgeWrapper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s'})", "Joe")
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name})",
+		map[string]interface{}{"name": "Joe"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s', age: %d})", "Smith", 10)
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name, age: $age})",
+		map[string]interface{}{"name": "Smith", "age": 10})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: '%s', weight:%f})", "Jack", 70.3)
+	_, err = tx.ExecCypher(0, "CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Jack", "weight": 70.3})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,7 +174,7 @@ func TestAgeWrapper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cursor, err := tx.ExecCypher(1, "MATCH (n:Person) RETURN n")
+	cursor, err := tx.ExecCypher(1, "MATCH (n:Person) RETURN n", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,14 +192,16 @@ func TestAgeWrapper(t *testing.T) {
 
 	fmt.Println("Vertex Count:", count)
 
-	_, err = tx.ExecCypher(0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Jack", "Joe", 3)
+	_, err = tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = tx.ExecCypher(0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Joe", "Smith", 7)
+	_, err = tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Smith", "weight": 7})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +213,7 @@ func TestAgeWrapper(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cursor, err = tx.ExecCypher(1, "MATCH p=()-[:workWith]-() RETURN p")
+	cursor, err = tx.ExecCypher(1, "MATCH p=()-[:workWith]-() RETURN p", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +230,7 @@ func TestAgeWrapper(t *testing.T) {
 		fmt.Println(count, "]", path.GetAsVertex(0), path.GetAsEdge(1).props, path.GetAsVertex(2))
 	}
 
-	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,9 +256,12 @@ func TestQueryWithMapper(t *testing.T) {
 	}
 
 	// Create Vertex
-	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s'})", "Joe")
-	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s', age: %d})", "Smith", 10)
-	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s', weight:%f})", "Jack", 70.3)
+	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: $name})",
+		map[string]interface{}{"name": "Joe"})
+	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: $name, age: $age})",
+		map[string]interface{}{"name": "Smith", "age": 10})
+	ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Jack", "weight": 70.3})
 
 	tx.Commit()
 
@@ -256,7 +271,7 @@ func TestQueryWithMapper(t *testing.T) {
 	}
 
 	// Match
-	mapCursor, err := ExecCypherMap(tx, graphName, 1, "MATCH (n:Person) RETURN n")
+	mapCursor, err := ExecCypherMap(tx, graphName, 1, "MATCH (n:Person) RETURN n", nil)
 
 	if err != nil {
 		t.Fatal(err)
@@ -277,11 +292,13 @@ func TestQueryWithMapper(t *testing.T) {
 	}
 
 	// Create Path
-	ExecCypher(tx, graphName, 0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Jack", "Joe", 3)
+	ExecCypher(tx, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 
-	ExecCypher(tx, graphName, 0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Joe", "Smith", 7)
+	ExecCypher(tx, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Smith", "weight": 7})
 
 	tx.Commit()
 
@@ -291,7 +308,7 @@ func TestQueryWithMapper(t *testing.T) {
 	}
 
 	// Query Path
-	mapCursor, err = ExecCypherMap(tx, graphName, 3, "MATCH (a)-[b:workWith]-(c) RETURN a,b,c")
+	mapCursor, err = ExecCypherMap(tx, graphName, 3, "MATCH (a)-[b:workWith]-(c) RETURN a,b,c", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +331,7 @@ func TestQueryWithMapper(t *testing.T) {
 	}
 
 	// Clear Data
-	_, err = ExecCypher(tx, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = ExecCypher(tx, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +358,9 @@ func TestCudReturn(t *testing.T) {
 	}
 
 	// Create Vertex
-	cursor, err := ExecCypher(tx, graphName, 1, "CREATE (n:Person {name: '%s'}) RETURN n", "Joe")
+	cursor, err := ExecCypher(tx, graphName, 1,
+		"CREATE (n:Person {name: $name}) RETURN n",
+		map[string]interface{}{"name": "Joe"})
 
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +370,9 @@ func TestCudReturn(t *testing.T) {
 		fmt.Println(cursor.GetRow())
 	}
 
-	cursor, err = ExecCypher(tx, graphName, 1, "CREATE (n:Person {name: '%s', age: %d}) RETURN n", "Smith", 10)
+	cursor, err = ExecCypher(tx, graphName, 1,
+		"CREATE (n:Person {name: $name, age: $age}) RETURN n",
+		map[string]interface{}{"name": "Smith", "age": 10})
 
 	if err != nil {
 		t.Fatal(err)
@@ -361,7 +382,9 @@ func TestCudReturn(t *testing.T) {
 		fmt.Println(cursor.GetRow())
 	}
 
-	cursor, err = ExecCypher(tx, graphName, 1, "CREATE (n:Person {name: '%s', weight:%f}) RETURN n", "Jack", 70.3)
+	cursor, err = ExecCypher(tx, graphName, 1,
+		"CREATE (n:Person {name: $name, weight: $weight}) RETURN n",
+		map[string]interface{}{"name": "Jack", "weight": 70.3})
 
 	if err != nil {
 		t.Fatal(err)
@@ -377,7 +400,7 @@ func TestCudReturn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cursor, err = ExecCypher(tx, graphName, 1, "MATCH (n:Person) RETURN n")
+	cursor, err = ExecCypher(tx, graphName, 1, "MATCH (n:Person) RETURN n", nil)
 
 	if err != nil {
 		t.Fatal(err)
@@ -402,9 +425,9 @@ func TestQueryManyReturn(t *testing.T) {
 	}
 
 	// Create Vertex
-	tx.ExecCypher(0, "CREATE (n:Person {name: '%s'})", "Joe")
-	tx.ExecCypher(0, "CREATE (n:Person {name: '%s', age: %d})", "Smith", 10)
-	tx.ExecCypher(0, "CREATE (n:Person {name: '%s', weight:%f})", "Jack", 70.3)
+	tx.ExecCypher(0, "CREATE (n:Person {name: $name})", map[string]interface{}{"name": "Joe"})
+	tx.ExecCypher(0, "CREATE (n:Person {name: $name, age: $age})", map[string]interface{}{"name": "Smith", "age": 10})
+	tx.ExecCypher(0, "CREATE (n:Person {name: $name, weight: $weight})", map[string]interface{}{"name": "Jack", "weight": 70.3})
 
 	tx.Commit()
 
@@ -414,11 +437,13 @@ func TestQueryManyReturn(t *testing.T) {
 	}
 
 	// Create Path
-	tx.ExecCypher(0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Jack", "Joe", 3)
+	tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 
-	tx.ExecCypher(0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)",
-		"Joe", "Smith", 7)
+	tx.ExecCypher(0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Smith", "weight": 7})
 
 	tx.Commit()
 
@@ -428,7 +453,7 @@ func TestQueryManyReturn(t *testing.T) {
 	}
 
 	// Query Path1
-	cursor, err := tx.ExecCypher(3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b")
+	cursor, err := tx.ExecCypher(3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,7 +472,9 @@ func TestQueryManyReturn(t *testing.T) {
 	}
 
 	// Query Path2
-	cursor, err = tx.ExecCypher(1, "MATCH p=(a:Person)-[l:workWith]-(b:Person) WHERE a.name = '%s' RETURN p", "Joe")
+	cursor, err = tx.ExecCypher(1,
+		"MATCH p=(a:Person)-[l:workWith]-(b:Person) WHERE a.name = $name RETURN p",
+		map[string]interface{}{"name": "Joe"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,7 +493,7 @@ func TestQueryManyReturn(t *testing.T) {
 	}
 
 	// Clear Data
-	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = tx.ExecCypher(0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
