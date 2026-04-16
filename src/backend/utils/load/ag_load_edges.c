@@ -138,7 +138,7 @@ static List *create_copy_options(void)
 /*
  * Load edges from CSV file using pg's COPY infrastructure.
  */
-int create_edges_from_csv_file(char *file_path,
+int create_edges_from_csv_file(copy_data_source_cb data_cb,
                                char *graph_name,
                                Oid graph_oid,
                                char *label_name,
@@ -193,9 +193,9 @@ int create_edges_from_csv_file(char *file_path,
         cstate = BeginCopyFrom(pstate,
                                label_rel,
                                NULL,           /* whereClause */
-                               file_path,
+                               NULL,           /* filename - using callback instead */
                                false,          /* is_program */
-                               NULL,           /* data_source_cb */
+                               data_cb,        /* data_source_cb */
                                NIL,            /* attnamelist */
                                copy_options);
 

@@ -125,7 +125,7 @@ static List *create_copy_options(void)
 /*
  * Load vertex labels from csv file using pg's COPY infrastructure.
  */
-int create_labels_from_csv_file(char *file_path,
+int create_labels_from_csv_file(copy_data_source_cb data_cb,
                                 char *graph_name,
                                 Oid graph_oid,
                                 char *label_name,
@@ -191,9 +191,9 @@ int create_labels_from_csv_file(char *file_path,
         cstate = BeginCopyFrom(pstate,
                                label_rel,
                                NULL,           /* whereClause */
-                               file_path,
+                               NULL,           /* filename - using callback instead */
                                false,          /* is_program */
-                               NULL,           /* data_source_cb */
+                               data_cb,        /* data_source_cb */
                                NIL,            /* attnamelist - NULL means all columns */
                                copy_options);
 
