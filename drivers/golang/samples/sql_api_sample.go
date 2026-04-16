@@ -47,17 +47,23 @@ func doWithSqlAPI(dsn string, graphName string) {
 	}
 
 	// Create vertices with Cypher
-	_, err = age.ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s', weight:%f})", "Joe", 67.3)
+	_, err = age.ExecCypher(tx, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Joe", "weight": 67.3})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = age.ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s', weight:77.3, roles:['Dev','marketing']})", "Jack")
+	_, err = age.ExecCypher(tx, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: 77.3, roles: ['Dev','marketing']})",
+		map[string]interface{}{"name": "Jack"})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = age.ExecCypher(tx, graphName, 0, "CREATE (n:Person {name: '%s', weight:%d})", "Andy", 59)
+	_, err = age.ExecCypher(tx, graphName, 0,
+		"CREATE (n:Person {name: $name, weight: $weight})",
+		map[string]interface{}{"name": "Andy", "weight": 59})
 	if err != nil {
 		panic(err)
 	}
@@ -71,7 +77,7 @@ func doWithSqlAPI(dsn string, graphName string) {
 		panic(err)
 	}
 	// Query cypher
-	cypherCursor, err := age.ExecCypher(tx, graphName, 1, "MATCH (n:Person) RETURN n")
+	cypherCursor, err := age.ExecCypher(tx, graphName, 1, "MATCH (n:Person) RETURN n", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -86,12 +92,16 @@ func doWithSqlAPI(dsn string, graphName string) {
 	}
 
 	// Create Paths (Edges)
-	_, err = age.ExecCypher(tx, graphName, 0, "MATCH (a:Person), (b:Person) WHERE a.name='%s' AND b.name='%s' CREATE (a)-[r:workWith {weight: %d}]->(b)", "Jack", "Joe", 3)
+	_, err = age.ExecCypher(tx, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Jack", "bname": "Joe", "weight": 3})
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = age.ExecCypher(tx, graphName, 0, "MATCH (a:Person {name: '%s'}), (b:Person {name: '%s'}) CREATE (a)-[r:workWith {weight: %d}]->(b)", "Joe", "Andy", 7)
+	_, err = age.ExecCypher(tx, graphName, 0,
+		"MATCH (a:Person {name: $aname}), (b:Person {name: $bname}) CREATE (a)-[r:workWith {weight: $weight}]->(b)",
+		map[string]interface{}{"aname": "Joe", "bname": "Andy", "weight": 7})
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +113,7 @@ func doWithSqlAPI(dsn string, graphName string) {
 		panic(err)
 	}
 	// Query Paths with Cypher
-	cypherCursor, err = age.ExecCypher(tx, graphName, 1, "MATCH p=()-[:workWith]-() RETURN p")
+	cypherCursor, err = age.ExecCypher(tx, graphName, 1, "MATCH p=()-[:workWith]-() RETURN p", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -123,7 +133,7 @@ func doWithSqlAPI(dsn string, graphName string) {
 	}
 
 	// Query with return many columns
-	cursor, err := age.ExecCypher(tx, graphName, 3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b")
+	cursor, err := age.ExecCypher(tx, graphName, 3, "MATCH (a:Person)-[l:workWith]-(b:Person) RETURN a, l, b", nil)
 	if err != nil {
 		panic(err)
 	}
@@ -142,7 +152,7 @@ func doWithSqlAPI(dsn string, graphName string) {
 	}
 
 	// Delete Vertices
-	_, err = age.ExecCypher(tx, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *")
+	_, err = age.ExecCypher(tx, graphName, 0, "MATCH (n:Person) DETACH DELETE n RETURN *", nil)
 	if err != nil {
 		panic(err)
 	}
