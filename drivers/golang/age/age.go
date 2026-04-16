@@ -273,8 +273,7 @@ func (c *CypherCursor) GetRow() ([]Entity, error) {
 		gstr := gstrs[i].(*string)
 		e, err := c.unmarshaler.unmarshal(*gstr)
 		if err != nil {
-			fmt.Println(i, ">>", gstr)
-			return nil, err
+			return nil, fmt.Errorf("CypherCursor.GetRow: column %d: %w", i, err)
 		}
 		entArr[i] = e
 	}
