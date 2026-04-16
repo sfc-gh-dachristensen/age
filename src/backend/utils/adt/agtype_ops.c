@@ -51,8 +51,8 @@ static void concat_to_agtype_string(agtype_value *result, char *lhs, int llen,
     check_string_length(length);
     buffer = palloc(length);
 
-    strncpy(buffer, lhs, llen);
-    strncpy(buffer + llen, rhs, rlen);
+    memcpy(buffer, lhs, llen);
+    memcpy(buffer + llen, rhs, rlen);
 
     result->type = AGTV_STRING;
     result->val.string.len = length;
@@ -80,9 +80,10 @@ static char *get_string_from_agtype_value(agtype_value *agtv, int *length)
 
         if (is_decimal_needed(string))
         {
-            char *str = palloc(*length + 2);
-            strncpy(str, string, *length);
-            strncpy(str + *length, ".0", 2);
+            char *str = palloc(*length + 3);
+            memcpy(str, string, *length);
+            memcpy(str + *length, ".0", 2);
+            str[*length + 2] = '\0';
             *length += 2;
             string = str;
         }
