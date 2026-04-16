@@ -73,7 +73,7 @@ Datum graphid_in(PG_FUNCTION_ARGS)
     int64 i;
 
     errno = 0;
-    i = strtol(str, &endptr, 10);
+    i = strtoll(str, &endptr, 10);
     if (errno != 0 || endptr == str || *endptr != '\0')
     {
         ereport(ERROR,
