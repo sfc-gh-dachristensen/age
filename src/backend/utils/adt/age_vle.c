@@ -1993,6 +1993,11 @@ Datum age_match_two_vle_edges(PG_FUNCTION_ARGS)
 
     PG_FREE_IF_COPY(agt_arg_vpc, 1);
 
+    if (left_array_size == 0 || right_path->graphid_array_size == 0)
+    {
+        PG_RETURN_BOOL(false);
+    }
+
     if (left_array[left_array_size - 1] != right_array[0])
     {
         PG_RETURN_BOOL(false);
@@ -2117,6 +2122,11 @@ Datum age_match_vle_edge_to_id_qual(PG_FUNCTION_ARGS)
     if (vle_is_on_left)
     {
         int array_size = vle_path->graphid_array_size;
+
+        if (array_size == 0)
+        {
+            PG_RETURN_BOOL(false);
+        }
 
         /*
          * Path is like ...[vle_edge]-()-[regular_edge]... Get the graphid of
@@ -2299,7 +2309,11 @@ Datum age_match_vle_terminal_edge(PG_FUNCTION_ARGS)
     /* get the gida array size */
     gidasize = vpc->graphid_array_size;
 
-    /* verify the minimum size is 3 or 1 */
+    /* verify the minimum size is 3 or 1; zero-size arrays must not reach here */
+    if (gidasize == 0)
+    {
+        PG_RETURN_BOOL(false);
+    }
     Assert(gidasize >= 3 || gidasize == 1);
 
     /* get the vsid */
