@@ -20,6 +20,7 @@ package age
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 
@@ -28,7 +29,36 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require"
+// testDSN reads connection parameters from standard PG* environment variables.
+// Never hardcode passwords in source — set PGPASSWORD in the environment before
+// running tests (e.g. export PGPASSWORD=mypassword).
+func testDSN() string {
+	host := os.Getenv("PGHOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := os.Getenv("PGPORT")
+	if port == "" {
+		port = "5432"
+	}
+	dbname := os.Getenv("PGDATABASE")
+	if dbname == "" {
+		dbname = "postgres"
+	}
+	user := os.Getenv("PGUSER")
+	if user == "" {
+		user = "postgres"
+	}
+	password := os.Getenv("PGPASSWORD")
+	sslmode := os.Getenv("PGSSLMODE")
+	if sslmode == "" {
+		sslmode = "require"
+	}
+	return fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
+		host, port, dbname, user, password, sslmode)
+}
+
+var dsn string = testDSN()
 var graphName string = "testGraph"
 
 func TestAdditional(t *testing.T) {

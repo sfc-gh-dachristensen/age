@@ -182,9 +182,15 @@ func warnInsecureSSL(dsn string) {
 		"Use sslmode=require or sslmode=verify-full in production.", host)
 }
 
-/**
-@param dsn host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require
-*/
+// ConnectAge opens a connection to a PostgreSQL server with AGE loaded.
+// Pass connection parameters via the dsn string; never hardcode passwords in
+// source — read them from the environment instead:
+//
+//	dsn := fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=require",
+//	    os.Getenv("PGHOST"), os.Getenv("PGPORT"), os.Getenv("PGDATABASE"),
+//	    os.Getenv("PGUSER"), os.Getenv("PGPASSWORD"))
+//
+// Prefer ConnectAgeSecure to enforce TLS automatically.
 func ConnectAge(graphName string, dsn string) (*Age, error) {
 	warnInsecureSSL(dsn)
 	db, err := sql.Open("postgres", dsn)
