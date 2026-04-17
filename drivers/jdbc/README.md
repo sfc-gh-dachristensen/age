@@ -96,3 +96,39 @@ Vertex : Country, 	Props : {name=US}
 - Apache Age : [https://age.apache.org/](https://age.apache.org/)
 - GitHub : [https://github.com/apache/age](https://github.com/apache/age)
 - Document : [https://age.apache.org/age-manual/master/index.html](https://age.apache.org/age-manual/master/index.html)
+
+## TLS / Encrypted Connections
+
+By default, the PostgreSQL JDBC driver does not enforce TLS.  Always use an
+encrypted connection when the database is not on localhost.
+
+Append SSL parameters to the JDBC URL, or pass them as `Properties`:
+
+```java
+// Option 1: URL parameters
+String DB_URL = "jdbc:postgresql://db.example.com:5432/postgres"
+              + "?ssl=true&sslmode=verify-full";
+
+// Option 2: Properties object
+Properties props = new Properties();
+props.setProperty("user", "app");
+props.setProperty("password", "secret");
+props.setProperty("ssl", "true");
+props.setProperty("sslmode", "verify-full");  // or "require"
+
+PgConnection connection = DriverManager
+    .getConnection("jdbc:postgresql://db.example.com:5432/postgres", props)
+    .unwrap(PgConnection.class);
+```
+
+**Recommended sslmode values:**
+
+| Value | Meaning |
+|---|---|
+| `require` | Encrypts the connection; does not verify the server certificate |
+| `verify-ca` | Encrypts and verifies the server certificate against a trusted CA |
+| `verify-full` | Encrypts, verifies certificate, and checks the hostname (recommended for production) |
+
+For client certificate authentication, also set `sslcert`, `sslkey`, and
+`sslrootcert` in the connection properties.  See the
+[PostgreSQL JDBC SSL documentation](https://jdbc.postgresql.org/documentation/ssl/) for details.

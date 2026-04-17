@@ -69,5 +69,29 @@ go test . -v
 * Run Samples : [samples/main.go](samples/main.go)
 
 
+### TLS / Encrypted Connections
+
+By default, PostgreSQL connection strings do not enforce TLS.  Always use
+an encrypted connection when the database is not on localhost.
+
+**Secure-by-default helper** — use `ConnectAgeSecure` instead of `ConnectAge`.
+It appends `sslmode=require` automatically when no `sslmode` is present in the DSN:
+
+```go
+age, err := age.ConnectAgeSecure("myGraph",
+    "host=db.example.com port=5432 dbname=postgres user=app password=secret")
+```
+
+**Recommended DSN settings:**
+
+| Setting | Meaning |
+|---|---|
+| `sslmode=require` | Encrypts the connection; does not verify the server certificate |
+| `sslmode=verify-ca` | Encrypts and verifies the server certificate against a trusted CA |
+| `sslmode=verify-full` | Encrypts, verifies certificate, and checks the hostname (recommended for production) |
+
+`ConnectAge` logs a runtime warning when `sslmode=disable` is detected for a
+non-loopback host so that misconfigured deployments are visible in logs.
+
 ### License
 Apache-2.0 License

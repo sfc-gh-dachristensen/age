@@ -211,6 +211,16 @@ func ConnectAge(graphName string, dsn string) (*Age, error) {
 	return age, err
 }
 
+// ConnectAgeSecure is like ConnectAge but enforces TLS by appending
+// sslmode=require to the DSN when no sslmode is already specified.
+// Use sslmode=verify-full in the DSN directly for full certificate validation.
+func ConnectAgeSecure(graphName string, dsn string) (*Age, error) {
+	if !strings.Contains(strings.ToLower(dsn), "sslmode=") {
+		dsn = dsn + " sslmode=require"
+	}
+	return ConnectAge(graphName, dsn)
+}
+
 func NewAge(graphName string, db *sql.DB) *Age {
 	return &Age{db: db, graphName: graphName}
 }
