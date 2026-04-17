@@ -310,7 +310,20 @@ static void create_VLE_local_state_hashtable(VLE_local_context *vlelctx)
     /* add in the graph name */
     eshn = strncat(eshn, graph_name, glen);
 
-    /* initialize the edge state hashtable */
+    /*
+     * Initialize the edge state hashtable.
+     *
+     * Hash collision risk: graphid keys are structured as
+     * (label_id << 32 | sequence_number), so consecutive IDs within a label
+     * share the same upper 32 bits.  tag_hash (Jenkins hash) handles
+     * sequential integers reasonably, but a caller who can create many edges
+     * could craft IDs that cluster in the same hash buckets and degrade
+     * lookups from O(1) toward O(n).
+     *
+     * A future improvement would be to replace tag_hash with a stronger
+     * integer mixing function (e.g. a Murmur3 or xxHash finalizer) that
+     * disperses structured integer keys more uniformly.
+     */
     MemSet(&edge_state_ctl, 0, sizeof(edge_state_ctl));
     edge_state_ctl.keysize = sizeof(int64);
     edge_state_ctl.entrysize = sizeof(edge_state_entry);

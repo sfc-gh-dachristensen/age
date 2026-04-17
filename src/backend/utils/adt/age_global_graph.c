@@ -175,7 +175,20 @@ static void create_GRAPH_global_hashtables(GRAPH_global_context *ggctx)
     vhn = strncat(vhn, graph_name, glen);
     ehn = strncat(ehn, graph_name, glen);
 
-    /* initialize the vertex hashtable */
+    /*
+     * Initialize the vertex and edge global-graph hashtables.
+     *
+     * Hash collision risk: graphid keys are structured as
+     * (label_id << 32 | sequence_number), so consecutive IDs within a label
+     * share the same upper 32 bits.  tag_hash (Jenkins hash) handles
+     * sequential integers reasonably, but a caller who can create many
+     * vertices or edges could craft IDs that cluster in the same hash buckets
+     * and degrade lookups from O(1) toward O(n).
+     *
+     * A future improvement would be to replace tag_hash with a stronger
+     * integer mixing function (e.g. a Murmur3 or xxHash finalizer) that
+     * disperses structured integer keys more uniformly.
+     */
     MemSet(&vertex_ctl, 0, sizeof(vertex_ctl));
     vertex_ctl.keysize = sizeof(int64);
     vertex_ctl.entrysize = sizeof(vertex_entry);
