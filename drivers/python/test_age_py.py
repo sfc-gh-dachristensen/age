@@ -13,6 +13,7 @@
 # specific language governing permissions and limitations
 # under the License.
 import json
+import os
 
 from age.models import Vertex
 import unittest
@@ -20,11 +21,14 @@ import decimal
 import age
 import argparse
 
-TEST_HOST = "localhost"
-TEST_PORT = 5432
-TEST_DB = "postgres"
-TEST_USER = "postgres"
-TEST_PASSWORD = "agens"
+# Connection defaults read from standard PG* environment variables.
+# Never hardcode passwords in source — set PGPASSWORD in the environment
+# before running tests (e.g. export PGPASSWORD=mypassword).
+TEST_HOST = os.environ.get("PGHOST", "localhost")
+TEST_PORT = int(os.environ.get("PGPORT", "5432"))
+TEST_DB = os.environ.get("PGDATABASE", "postgres")
+TEST_USER = os.environ.get("PGUSER", "postgres")
+TEST_PASSWORD = os.environ.get("PGPASSWORD", "")
 TEST_GRAPH_NAME = "test_graph"
 
 
