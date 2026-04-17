@@ -60,6 +60,16 @@ extern int age_graph_load_size_limit;
  */
 extern int age_vle_edge_state_limit;
 
+/*
+ * Maximum total number of edge-state entries that may be held across all
+ * cached VLE local contexts.  0 means only the context-count limit applies
+ * (the default).  Setting a positive value evicts the least-recently-used
+ * cached contexts when the combined edge-state entry count would exceed this
+ * threshold, providing a memory-proportional cache bound.
+ * Example: SET age.vle_cache_max_entries = 5000000;
+ */
+extern int age_vle_cache_max_entries;
+
 void define_config_params(void);
 
 #endif

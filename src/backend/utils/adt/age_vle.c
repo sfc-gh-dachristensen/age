@@ -279,6 +279,55 @@ static void cache_VLE_local_context(VLE_local_context *vlelctx)
         return;
     }
 
+    /*
+     * Memory-proportional cache eviction: if age.vle_cache_max_entries is set,
+     * evict least-recently-used (tail) contexts until the total edge-state
+     * entry count across all cached contexts plus the incoming context fits
+     * within the configured limit.
+     *
+     * This caps total cache memory in terms of edge-state entries rather than
+     * only the number of cached contexts (which is still enforced separately by
+     * get_cached_VLE_local_context via MAXIMUM_NUMBER_OF_CACHED_LOCAL_CONTEXTS).
+     */
+    if (age_vle_cache_max_entries > 0)
+    {
+        VLE_local_context *cur = global_vle_local_contexts;
+        long total_entries = hash_get_num_entries(vlelctx->edge_state_hashtable);
+
+        /* sum entries in all existing cached contexts */
+        while (cur != NULL)
+        {
+            total_entries += hash_get_num_entries(cur->edge_state_hashtable);
+            cur = cur->next;
+        }
+
+        /* evict tail (LRU) contexts until we are within the limit */
+        while (total_entries > age_vle_cache_max_entries &&
+               global_vle_local_contexts != NULL)
+        {
+            VLE_local_context *tail = global_vle_local_contexts;
+            VLE_local_context *tail_prev = NULL;
+
+            /* walk to the tail of the list */
+            while (tail->next != NULL)
+            {
+                tail_prev = tail;
+                tail = tail->next;
+            }
+
+            /* subtract evicted context's contribution */
+            total_entries -= hash_get_num_entries(tail->edge_state_hashtable);
+
+            /* unlink the tail */
+            if (tail_prev != NULL)
+                tail_prev->next = NULL;
+            else
+                global_vle_local_contexts = NULL;
+
+            free_VLE_local_context(tail);
+        }
+    }
+
     /* if the global link is null, just assign it the local context */
     if (global_vle_local_contexts == NULL)
     {

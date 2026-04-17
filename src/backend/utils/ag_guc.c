@@ -28,6 +28,7 @@ bool age_enable_containment = true;
 int  age_max_vle_depth = 1000;
 int  age_graph_load_size_limit = 0;
 int  age_vle_edge_state_limit = 0;
+int  age_vle_cache_max_entries = 0;
 
 /*
  * Defines AGE's custom configuration parameters.
@@ -78,6 +79,19 @@ void define_config_params(void)
                             "Maximum number of entries in the VLE edge state hash table per traversal (0 = no limit).",
                             NULL,
                             &age_vle_edge_state_limit,
+                            0,
+                            0,
+                            INT_MAX,
+                            PGC_SUSET,
+                            0,
+                            NULL,
+                            NULL,
+                            NULL);
+
+    DefineCustomIntVariable("age.vle_cache_max_entries",
+                            "Maximum total edge-state entries across all cached VLE contexts (0 = count limit only).",
+                            NULL,
+                            &age_vle_cache_max_entries,
                             0,
                             0,
                             INT_MAX,
