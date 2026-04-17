@@ -1,0 +1,11 @@
+# Locked dependency versions for reproducible installs.
+# Generated from the current environment; regenerate with:
+#   pip install -r requirements.txt
+#   pip freeze | grep -E "^(psycopg|antlr4|setuptools|networkx)==" > requirements-lock.txt
+#
+# Install locked dependencies with:
+#   pip install -r requirements-lock.txt
+psycopg==3.3.3
+antlr4-python3-runtime==4.11.1
+setuptools==82.0.0
+networkx==3.6.1
