@@ -6,9 +6,21 @@ import java.sql.*;
 public class AgeBasic {
 
     public static PgConnection connection;
-    static final String DB_URL = "jdbc:postgresql://localhost:5432/demo";
-    static final String USER = "postgres";
-    static final String PASS = "pass";
+
+    // Never hardcode credentials in source — read them from environment variables.
+    // Set PGHOST, PGPORT, PGDATABASE, PGUSER, and PGPASSWORD before running.
+    static final String DB_URL = String.format(
+        "jdbc:postgresql://%s:%s/%s?sslmode=require",
+        envOrDefault("PGHOST",     "localhost"),
+        envOrDefault("PGPORT",     "5432"),
+        envOrDefault("PGDATABASE", "demo"));
+    static final String USER = envOrDefault("PGUSER",     "postgres");
+    static final String PASS = envOrDefault("PGPASSWORD", "");
+
+    private static String envOrDefault(String name, String defaultValue) {
+        String value = System.getenv(name);
+        return (value != null && !value.isEmpty()) ? value : defaultValue;
+    }
 
     public static void main(String[] args) {
 

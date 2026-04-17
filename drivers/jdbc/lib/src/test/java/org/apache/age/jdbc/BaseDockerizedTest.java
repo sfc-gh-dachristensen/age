@@ -51,7 +51,11 @@ public class BaseDockerizedTest {
 
     @BeforeAll
     public void beforeAll() throws Exception {
-        String CORRECT_DB_PASSWORDS = "postgres";
+        // Read the test container password from the environment so that CI
+        // pipelines can override it.  Never hardcode passwords in source.
+        String pgPassword = System.getenv("PGPASSWORD");
+        String CORRECT_DB_PASSWORDS = (pgPassword != null && !pgPassword.isEmpty())
+            ? pgPassword : "postgres";
 
         agensGraphContainer = new GenericContainer<>(DockerImageName
             .parse("apache/age:dev_snapshot_master"))
