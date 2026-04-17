@@ -70,6 +70,17 @@ extern int age_vle_edge_state_limit;
  */
 extern int age_vle_cache_max_entries;
 
+/*
+ * Directory from which CSV files may be loaded via load_labels_from_file()
+ * and load_edges_from_file().  Only files inside this directory (after
+ * realpath() resolution) are permitted.  Defaults to /tmp/age/, which is
+ * world-writable on most systems; set this to a directory owned by the
+ * PostgreSQL service account with mode 0700 to prevent other local users
+ * from placing files there.
+ * Example: SET age.csv_directory = '/var/lib/postgresql/age_csv/';
+ */
+extern char *age_csv_directory;
+
 void define_config_params(void);
 
 #endif

@@ -42,6 +42,7 @@
 #include "utils/load/ag_load_edges.h"
 #include "utils/load/ag_load_labels.h"
 #include "utils/load/age_load.h"
+#include "utils/ag_guc.h"
 
 static agtype_value *csv_value_to_agtype_value(char *csv_val);
 static Oid get_or_create_graph(const Name graph_name);
@@ -59,8 +60,34 @@ static void check_rls_for_load(Oid relid);
  */
 static int validated_csv_fd = -1;
 
-#define AGE_BASE_CSV_DIRECTORY "/tmp/age/"
 #define AGE_CSV_FILE_EXTENSION ".csv"
+
+/*
+ * Return the configured CSV directory, guaranteed to end with '/'.
+ * The returned pointer is valid for the duration of the current memory
+ * context (may be the GUC string itself if it already ends with '/').
+ */
+static const char *get_effective_csv_dir(void)
+{
+    const char *dir;
+    size_t      len;
+    char       *result;
+
+    dir = age_csv_directory;
+    if (dir == NULL || dir[0] == '\0')
+        dir = "/tmp/age/";
+
+    len = strlen(dir);
+    if (dir[len - 1] == '/')
+        return dir;
+
+    /* Need to append a trailing slash */
+    result = palloc(len + 2);
+    memcpy(result, dir, len);
+    result[len]     = '/';
+    result[len + 1] = '\0';
+    return result;
+}
 
 /*
  * Trim leading and trailing whitespace from a string.
@@ -112,6 +139,8 @@ char *trim_whitespace(const char *str)
  */
 static int open_validated_file(char *name)
 {
+    const char *base_dir;
+    size_t base_dir_len;
     int length;
     char path[PATH_MAX];
     char *resolved;
@@ -132,7 +161,10 @@ static int open_validated_file(char *name)
                         errmsg("file name cannot be zero length")));
     }
 
-    snprintf(path, sizeof(path), "%s%s", AGE_BASE_CSV_DIRECTORY, name);
+    base_dir = get_effective_csv_dir();
+    base_dir_len = strlen(base_dir);
+
+    snprintf(path, sizeof(path), "%s%s", base_dir, name);
 
     resolved = realpath(path, NULL);
 
@@ -142,13 +174,12 @@ static int open_validated_file(char *name)
                         errmsg("File or path does not exist [%s]", path)));
     }
 
-    if (strncmp(resolved, AGE_BASE_CSV_DIRECTORY,
-                strlen(AGE_BASE_CSV_DIRECTORY)) != 0)
+    if (strncmp(resolved, base_dir, base_dir_len) != 0)
     {
         free(resolved);
         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                         errmsg("You can only load files located in [%s].",
-                               AGE_BASE_CSV_DIRECTORY)));
+                               base_dir)));
     }
 
     length = strlen(resolved) - 4;
