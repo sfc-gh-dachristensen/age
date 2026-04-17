@@ -1871,68 +1871,106 @@ Datum age_vle(PG_FUNCTION_ARGS)
      */
     oldctx = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-    while (done == false)
+    PG_TRY();
     {
-        /* find one path based on specific input */
-        switch (vlelctx->path_function)
+        while (done == false)
         {
-            case VLE_FUNCTION_PATHS_TO:
-            case VLE_FUNCTION_PATHS_BETWEEN:
-                found_a_path = dfs_find_a_path_between(vlelctx);
-                break;
-
-            case VLE_FUNCTION_PATHS_ALL:
-            case VLE_FUNCTION_PATHS_FROM:
-                found_a_path = dfs_find_a_path_from(vlelctx);
-                break;
-
-            default:
-                found_a_path = false;
-                break;
-        }
-
-        /* if we found a path, or are done, flag it so we can output the data */
-        if (found_a_path == true ||
-            (found_a_path == false && vlelctx->next_vertex == NULL) ||
-            (found_a_path == false &&
-             (vlelctx->path_function == VLE_FUNCTION_PATHS_BETWEEN ||
-              vlelctx->path_function == VLE_FUNCTION_PATHS_FROM)))
-        {
-            done = true;
-        }
-        /* if we need to fetch a new vertex and rerun the find */
-        else if ((vlelctx->path_function == VLE_FUNCTION_PATHS_ALL) ||
-                 (vlelctx->path_function == VLE_FUNCTION_PATHS_TO))
-        {
-            /* get the next start vertex id */
-            vlelctx->vsid = get_graphid(vlelctx->next_vertex);
-
-            /* increment to the next vertex */
-            vlelctx->next_vertex = next_GraphIdNode(vlelctx->next_vertex);
-
-            /* load in the starting edge(s) */
-            load_initial_dfs_stacks(vlelctx);
-
-            /* if we are starting from zero [*0..x] flag it */
-            if (vlelctx->lidx == 0)
+            /* find one path based on specific input */
+            switch (vlelctx->path_function)
             {
-                is_zero_bound = true;
+                case VLE_FUNCTION_PATHS_TO:
+                case VLE_FUNCTION_PATHS_BETWEEN:
+                    found_a_path = dfs_find_a_path_between(vlelctx);
+                    break;
+
+                case VLE_FUNCTION_PATHS_ALL:
+                case VLE_FUNCTION_PATHS_FROM:
+                    found_a_path = dfs_find_a_path_from(vlelctx);
+                    break;
+
+                default:
+                    found_a_path = false;
+                    break;
+            }
+
+            /* if we found a path, or are done, flag it so we can output the data */
+            if (found_a_path == true ||
+                (found_a_path == false && vlelctx->next_vertex == NULL) ||
+                (found_a_path == false &&
+                 (vlelctx->path_function == VLE_FUNCTION_PATHS_BETWEEN ||
+                  vlelctx->path_function == VLE_FUNCTION_PATHS_FROM)))
+            {
                 done = true;
             }
-            /* otherwise we need to loop back around */
+            /* if we need to fetch a new vertex and rerun the find */
+            else if ((vlelctx->path_function == VLE_FUNCTION_PATHS_ALL) ||
+                     (vlelctx->path_function == VLE_FUNCTION_PATHS_TO))
+            {
+                /* get the next start vertex id */
+                vlelctx->vsid = get_graphid(vlelctx->next_vertex);
+
+                /* increment to the next vertex */
+                vlelctx->next_vertex = next_GraphIdNode(vlelctx->next_vertex);
+
+                /* load in the starting edge(s) */
+                load_initial_dfs_stacks(vlelctx);
+
+                /* if we are starting from zero [*0..x] flag it */
+                if (vlelctx->lidx == 0)
+                {
+                    is_zero_bound = true;
+                    done = true;
+                }
+                /* otherwise we need to loop back around */
+                else
+                {
+                    done = false;
+                }
+            }
+            /* we shouldn't get here */
             else
             {
-                done = false;
+                ereport(ERROR,
+                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                         errmsg("age_vle() invalid path function")));
             }
         }
-        /* we shouldn't get here */
-        else
-        {
-            ereport(ERROR,
-                    (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                     errmsg("age_vle() invalid path function")));
-        }
     }
+    PG_CATCH();
+    {
+        /*
+         * Restore the memory context before any cleanup to avoid
+         * context-mismatch assertions inside pfree and hash_destroy.
+         */
+        MemoryContextSwitchTo(oldctx);
+
+        /*
+         * For cached VLE contexts the DFS stacks are allocated in
+         * TopMemoryContext and will not be freed automatically when the
+         * SRF aborts.  Release them here so they do not persist until the
+         * next query invocation.
+         *
+         * The edge_state_hashtable and the vlelctx struct itself are left
+         * for get_cached_VLE_local_context() to free on the next call,
+         * which is safe because vlelctx->is_dirty remains true after an
+         * error and prevents the dirty context from being reused.
+         *
+         * For non-cached contexts the stacks live in multi_call_memory_ctx
+         * which PostgreSQL frees automatically on SRF abort.
+         */
+        if (vlelctx != NULL && vlelctx->use_cache)
+        {
+            free_graphid_stack(vlelctx->dfs_vertex_stack);
+            vlelctx->dfs_vertex_stack = NULL;
+            free_graphid_stack(vlelctx->dfs_edge_stack);
+            vlelctx->dfs_edge_stack = NULL;
+            free_graphid_stack(vlelctx->dfs_path_stack);
+            vlelctx->dfs_path_stack = NULL;
+        }
+
+        PG_RE_THROW();
+    }
+    PG_END_TRY();
 
     /* switch back to a more volatile context */
     MemoryContextSwitchTo(oldctx);
