@@ -8942,8 +8942,8 @@ Datum age_split(PG_FUNCTION_ARGS)
             string = VARDATA(elements[i]);
             string_len = VARSIZE(elements[i]) - VARHDRSZ;
 
-            /* make a copy */
-            string_copy = palloc0(string_len);
+            /* make a null-terminated copy */
+            string_copy = palloc0(string_len + 1);
             memcpy(string_copy, string, string_len);
 
             /* build the agtype string */
