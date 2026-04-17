@@ -20,12 +20,41 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	_ "github.com/lib/pq"
 )
 
-// var dsn string = "host={host} port={port} dbname={dbname} user={username} password={password} sslmode=require"
-var dsn string = "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=agens sslmode=require"
+// buildDSN constructs a connection string from standard PG* environment
+// variables.  Never hardcode passwords in source — set them in the
+// environment instead (e.g. export PGPASSWORD=...).
+func buildDSN() string {
+	host := os.Getenv("PGHOST")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := os.Getenv("PGPORT")
+	if port == "" {
+		port = "5432"
+	}
+	dbname := os.Getenv("PGDATABASE")
+	if dbname == "" {
+		dbname = "postgres"
+	}
+	user := os.Getenv("PGUSER")
+	if user == "" {
+		user = "postgres"
+	}
+	password := os.Getenv("PGPASSWORD")
+	sslmode := os.Getenv("PGSSLMODE")
+	if sslmode == "" {
+		sslmode = "require"
+	}
+	return fmt.Sprintf("host=%s port=%s dbname=%s user=%s password=%s sslmode=%s",
+		host, port, dbname, user, password, sslmode)
+}
+
+var dsn string = buildDSN()
 
 // var graphName string = "{graph_path}"
 var graphName string = "testGraph"
