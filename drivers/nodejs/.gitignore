@@ -17,7 +17,6 @@
 
 /node_modules
 /yarn.lock
-/package-lock.json
 src/antlr4/*.tokens
 src/antlr4/*.interp
 
