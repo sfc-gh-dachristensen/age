@@ -1,4 +1,4 @@
-psycopg
+psycopg>=3.1,<4
 antlr4-python3-runtime==4.11.1
-setuptools
-networkx
+setuptools>=61.0,<83
+networkx>=3.0,<4
