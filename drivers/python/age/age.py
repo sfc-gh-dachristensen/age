@@ -15,6 +15,7 @@
 
 import os
 import re
+import warnings
 import psycopg
 from psycopg.types import TypeInfo
 from psycopg import sql
@@ -30,6 +31,33 @@ _EXCEPTION_GraphNotSet = GraphNotSet()
 # messages.  Off by default to prevent query text (which may contain
 # sensitive parameters) from appearing in application logs.
 _DEBUG = os.environ.get("AGE_DEBUG", "").lower() in ("1", "true", "yes")
+
+
+def _warn_insecure_ssl(dsn: str | None, kwargs: dict) -> None:
+    """Warn when sslmode=disable is used with a non-localhost host."""
+    sslmode = kwargs.get("sslmode", "")
+    host = kwargs.get("host", "localhost")
+
+    # Also parse key=value tokens from the DSN string.
+    if dsn:
+        for token in dsn.split():
+            k, _, v = token.partition("=")
+            if k.lower() == "sslmode":
+                sslmode = v
+            elif k.lower() == "host":
+                host = v
+
+    if sslmode.lower() != "disable":
+        return
+    if host in ("localhost", "127.0.0.1", "::1"):
+        return
+
+    warnings.warn(
+        f"sslmode=disable is set for non-local host {host!r} — "
+        "credentials will be transmitted in plaintext. "
+        "Use sslmode='require' or sslmode='verify-full' in production.",
+        stacklevel=3,
+    )
 
 
 def _sql_exec_error(cause, stmt):
@@ -347,11 +375,23 @@ class Age:
     # Connect to PostgreSQL Server and establish session and type extension environment.
     def connect(self, graph:str=None, dsn:str=None, connection_factory=None, cursor_factory=ClientCursor,
                 load_from_plugins:bool=False, **kwargs):
+        _warn_insecure_ssl(dsn, kwargs)
         conn = psycopg.connect(dsn, cursor_factory=cursor_factory, **kwargs)
         setUpAge(conn, graph, load_from_plugins)
         self.connection = conn
         self.graphName = graph
         return self
+
+    # Like connect() but enforces TLS by defaulting sslmode to 'require'
+    # when it is not already specified.  Pass sslmode='verify-full' for full
+    # certificate validation.
+    def connect_secure(self, graph:str=None, dsn:str=None, connection_factory=None,
+                       cursor_factory=ClientCursor, load_from_plugins:bool=False, **kwargs):
+        if "sslmode" not in kwargs and (dsn is None or "sslmode=" not in dsn.lower()):
+            kwargs["sslmode"] = "require"
+        return self.connect(graph=graph, dsn=dsn, connection_factory=connection_factory,
+                            cursor_factory=cursor_factory, load_from_plugins=load_from_plugins,
+                            **kwargs)
 
     def close(self):
         self.connection.close()

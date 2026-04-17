@@ -94,6 +94,31 @@ SET search_path = ag_catalog, "$user", public;
                    dbname=postgres, load_from_plugins=True, graph='graph_name)
   ```
 
+### TLS / Encrypted Connections
+
+By default, psycopg does not enforce TLS.  Always use an encrypted connection
+when the database is not on localhost.
+
+**Secure-by-default helper** — use `connect_secure()` instead of `connect()`.
+It sets `sslmode='require'` automatically when no `sslmode` is provided:
+
+```python
+ag = age.Age()
+ag.connect_secure(graph="myGraph", host="db.example.com", port=5432,
+                  dbname="postgres", user="app", password="secret")
+```
+
+**Recommended sslmode values:**
+
+| Value | Meaning |
+|---|---|
+| `require` | Encrypts the connection; does not verify the server certificate |
+| `verify-ca` | Encrypts and verifies the server certificate against a trusted CA |
+| `verify-full` | Encrypts, verifies certificate, and checks the hostname (recommended for production) |
+
+`Age.connect()` issues a `warnings.warn` when `sslmode='disable'` is detected
+for a non-loopback host so that misconfigured deployments surface in logs.
+
 ### License
 Apache-2.0 License
 

@@ -46,6 +46,45 @@ const results: QueryResultRow = await client?.query<QueryResultRow>(`
     $$) as (a agtype);
 `)!
 ```
+### TLS / Encrypted Connections
+
+By default, the `pg` package does not enforce TLS.  Always use an encrypted
+connection when the database is not on localhost.
+
+Pass `ssl` options in the `Client` config object:
+
+```typescript
+import { Client } from "pg";
+import { setAGETypes } from "../src";
+
+// Recommended: verify-full validates the server certificate and hostname
+const client = new Client({
+    user: "app",
+    host: "db.example.com",
+    database: "postgres",
+    password: "secret",
+    port: 5432,
+    ssl: {
+        rejectUnauthorized: true,   // enforce certificate validation
+        // ca: fs.readFileSync("/path/to/server-ca.pem").toString(),
+        // cert: fs.readFileSync("/path/to/client-cert.pem").toString(),
+        // key: fs.readFileSync("/path/to/client-key.pem").toString(),
+    },
+});
+await client.connect();
+await setAGETypes(client, types);
+```
+
+For a connection string, append `?sslmode=require` (or `verify-full`) to the
+PostgreSQL URL and set `ssl: { rejectUnauthorized: true }` in the config.
+
+**Recommended ssl settings:**
+
+| Setting | Meaning |
+|---|---|
+| `ssl: { rejectUnauthorized: false }` | Encrypts but does not verify the server certificate (not recommended for production) |
+| `ssl: { rejectUnauthorized: true }` | Encrypts and verifies the server certificate (recommended) |
+
 ### For more information about [Apache AGE](https://age.apache.org/)
 * Apache Age : https://age.apache.org/
 * GitHub : https://github.com/apache/age
