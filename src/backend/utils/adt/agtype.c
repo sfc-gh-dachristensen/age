@@ -3434,6 +3434,13 @@ Datum agtype_to_int4_array(PG_FUNCTION_ARGS)
         else if (agtv.type == AGTV_STRING)
             element_value = DatumGetInt32(DirectFunctionCall1(int4in,
                                                               CStringGetDatum(agtv.val.string.val)));
+
+        if (i >= element_size)
+            ereport(ERROR,
+                    (errcode(ERRCODE_DATA_EXCEPTION),
+                     errmsg("agtype array element count exceeds declared size of %d",
+                            element_size)));
+
         array_value[i++] = element_value;
     }
 
