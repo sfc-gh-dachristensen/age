@@ -24,11 +24,12 @@
 #include "utils/guc.h"
 #include "utils/ag_guc.h"
 
-bool age_enable_containment = true;
-int  age_max_vle_depth = 1000;
-int  age_graph_load_size_limit = 0;
-int  age_vle_edge_state_limit = 0;
-int  age_vle_cache_max_entries = 0;
+bool  age_enable_containment = true;
+int   age_max_vle_depth = 1000;
+int   age_graph_load_size_limit = 0;
+int   age_vle_edge_state_limit = 0;
+int   age_vle_cache_max_entries = 0;
+char *age_csv_directory = NULL;
 
 /*
  * Defines AGE's custom configuration parameters.
@@ -100,6 +101,20 @@ void define_config_params(void)
                             NULL,
                             NULL,
                             NULL);
+
+    DefineCustomStringVariable("age.csv_directory",
+                               "Directory from which CSV files may be loaded (must end with /).",
+                               "Only files whose realpath() resolves inside this directory are "
+                               "permitted. Set this to a directory owned by the PostgreSQL service "
+                               "account with mode 0700 to prevent other local users from staging "
+                               "malicious files. The default /tmp/age/ is world-writable.",
+                               &age_csv_directory,
+                               "/tmp/age/",
+                               PGC_SUSET,
+                               0,
+                               NULL,
+                               NULL,
+                               NULL);
 
     EmitWarningsOnPlaceholders("age");
 }
